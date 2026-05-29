@@ -1,48 +1,42 @@
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, CheckCircle, AlertCircle, User } from "lucide-react";
+import { Clock, CheckCircle, AlertCircle, User, Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function WorkOrders() {
+  const { user } = useAuth();
   const [selectedOrder, setSelectedOrder] = useState<number | null>(null);
 
-  const workOrders = [
-    {
-      id: 1,
-      title: "Fertilizer Application - Property #123",
-      property: "Property #123",
-      status: "in_progress",
-      priority: "high",
-      assignee: "John Doe",
-      startDate: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      dueDate: new Date(Date.now() + 4 * 60 * 60 * 1000),
-      progress: 65,
+  // Fetch real work order data
+  const workOrdersQuery = trpc.workorder.list.useQuery(
+    { companyId: user?.companyId || 0 },
+    { enabled: !!user?.companyId }
+  );
+
+  const updateStatusMutation = trpc.workorder.updateStatus.useMutation({
+    onSuccess: () => {
+      toast.success("Status updated");
+      workOrdersQuery.refetch();
     },
-    {
-      id: 2,
-      title: "Buffer Zone Inspection - Property #456",
-      property: "Property #456",
-      status: "pending",
-      priority: "medium",
-      assignee: "Unassigned",
-      startDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-      progress: 0,
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to update status");
     },
-    {
-      id: 3,
-      title: "Equipment Maintenance - Property #789",
-      property: "Property #789",
-      status: "completed",
-      priority: "low",
-      assignee: "Jane Smith",
-      startDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      progress: 100,
-    },
-  ];
+  });
+
+  const workOrders = workOrdersQuery.data || [];
+
+  if (workOrdersQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="animate-spin w-8 h-8" />
+      </div>
+    );
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -85,8 +79,8 @@ export default function WorkOrders() {
             <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <div className="text-2xl font-bold">{workOrders.length}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
 
@@ -95,8 +89,8 @@ export default function WorkOrders() {
             <CardTitle className="text-sm font-medium">In Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">Avg 4.2 hours</p>
+            <div className="text-2xl font-bold">{workOrders.filter((w: any) => w.status === "in_progress").length}</div>
+            <p className="text-xs text-muted-foreground">Active now</p>
           </CardContent>
         </Card>
 
@@ -105,18 +99,18 @@ export default function WorkOrders() {
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">142</div>
-            <p className="text-xs text-muted-foreground">91% completion rate</p>
+            <div className="text-2xl font-bold">{workOrders.filter((w: any) => w.status === "completed").length}</div>
+            <p className="text-xs text-muted-foreground">{workOrders.length > 0 ? Math.round((workOrders.filter((w: any) => w.status === "completed").length / workOrders.length) * 100) : 0}% completion</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Avg Completion Time</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3.8h</div>
-            <p className="text-xs text-muted-foreground">-12% from last month</p>
+            <div className="text-2xl font-bold">{workOrders.filter((w: any) => w.status === "pending").length}</div>
+            <p className="text-xs text-muted-foreground">Need assignment</p>
           </CardContent>
         </Card>
       </div>
@@ -134,8 +128,8 @@ export default function WorkOrders() {
         <TabsContent value="active" className="space-y-4">
           <div className="space-y-2">
             {workOrders
-              .filter((wo) => wo.status === "in_progress")
-              .map((order) => (
+              .filter((wo: any) => wo.status === "in_progress")
+              .map((order: any) => (
                 <Card
                   key={order.id}
                   className="cursor-pointer hover:bg-accent"
@@ -189,8 +183,8 @@ export default function WorkOrders() {
         <TabsContent value="pending" className="space-y-4">
           <div className="space-y-2">
             {workOrders
-              .filter((wo) => wo.status === "pending")
-              .map((order) => (
+              .filter((wo: any) => wo.status === "pending")
+              .map((order: any) => (
                 <Card key={order.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -219,8 +213,8 @@ export default function WorkOrders() {
         <TabsContent value="completed" className="space-y-4">
           <div className="space-y-2">
             {workOrders
-              .filter((wo) => wo.status === "completed")
-              .map((order) => (
+              .filter((wo: any) => wo.status === "completed")
+              .map((order: any) => (
                 <Card key={order.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">

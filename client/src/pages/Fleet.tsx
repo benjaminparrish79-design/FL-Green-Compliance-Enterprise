@@ -1,48 +1,33 @@
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, CheckCircle, MapPin, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle, MapPin, Zap, Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function Fleet() {
+  const { user } = useAuth();
   const [selectedDevice, setSelectedDevice] = useState<number | null>(null);
 
-  const devices = [
-    {
-      id: 1,
-      name: "Vehicle #001",
-      type: "truck",
-      status: "active",
-      location: "Property #123",
-      battery: 85,
-      lastUpdate: new Date(Date.now() - 5 * 60 * 1000),
-      driver: "John Doe",
-      maintenance: "good",
-    },
-    {
-      id: 2,
-      name: "Vehicle #002",
-      type: "van",
-      status: "active",
-      location: "Property #456",
-      battery: 45,
-      lastUpdate: new Date(Date.now() - 15 * 60 * 1000),
-      driver: "Jane Smith",
-      maintenance: "warning",
-    },
-    {
-      id: 3,
-      name: "GPS Device #003",
-      type: "gps",
-      status: "offline",
-      location: "Unknown",
-      battery: 10,
-      lastUpdate: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      driver: "N/A",
-      maintenance: "critical",
-    },
-  ];
+  // Fetch real device data
+  const devicesQuery = trpc.devices.list.useQuery(undefined, {
+    enabled: !!user?.companyId,
+  });
+
+  const locationsQuery = trpc.telemetry.getFleetLocations.useQuery(
+    { companyId: user?.companyId || 0 },
+    { enabled: !!user?.companyId }
+  );
+
+  const devices = devicesQuery.data || [];
+  const locations = locationsQuery.data || [];
+
+  const getDeviceLocation = (deviceId: number) => {
+    return locations.find((loc: any) => loc.deviceId === deviceId);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -63,6 +48,18 @@ export default function Fleet() {
     return "text-red-600";
   };
 
+  if (devicesQuery.isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="animate-spin w-8 h-8" />
+      </div>
+    );
+  }
+
+  const activeDevices = devices.filter((d) => d.status === "active").length;
+  const maintenanceDevices = devices.filter((d) => d.status === "maintenance").length;
+  const avgBattery = 0; // Battery data from telemetry service
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -81,8 +78,8 @@ export default function Fleet() {
             <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">18 active, 6 offline</p>
+            <div className="text-2xl font-bold">{devices.length}</div>
+            <p className="text-xs text-muted-foreground">{activeDevices} active, {devices.length - activeDevices} offline</p>
           </CardContent>
         </Card>
 
@@ -91,8 +88,8 @@ export default function Fleet() {
             <CardTitle className="text-sm font-medium">Active Now</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">18</div>
-            <p className="text-xs text-muted-foreground">75% utilization</p>
+            <div className="text-2xl font-bold">{activeDevices}</div>
+            <p className="text-xs text-muted-foreground">{devices.length > 0 ? Math.round((activeDevices / devices.length) * 100) : 0}% utilization</p>
           </CardContent>
         </Card>
 
@@ -101,8 +98,8 @@ export default function Fleet() {
             <CardTitle className="text-sm font-medium">Maintenance Due</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">Next: 5 days</p>
+            <div className="text-2xl font-bold">{maintenanceDevices}</div>
+            <p className="text-xs text-muted-foreground">Requires attention</p>
           </CardContent>
         </Card>
 
@@ -111,8 +108,8 @@ export default function Fleet() {
             <CardTitle className="text-sm font-medium">Avg Battery</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">72%</div>
-            <p className="text-xs text-muted-foreground">Healthy</p>
+            <div className="text-2xl font-bold">{avgBattery}%</div>
+            <p className="text-xs text-muted-foreground">{avgBattery > 60 ? "Healthy" : avgBattery > 30 ? "Warning" : "Critical"}</p>
           </CardContent>
         </Card>
       </div>
@@ -140,26 +137,26 @@ export default function Fleet() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">{device.name}</h3>
-                        <Badge className={getStatusColor(device.status)}>
-                          {device.status}
+                        <Badge className={getStatusColor(device.status || "inactive")}>
+                          {device.status || "inactive"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">{device.type.toUpperCase()}</p>
+                      <p className="text-sm text-muted-foreground">{(device.deviceType || "equipment").toUpperCase()}</p>
                       <div className="flex items-center gap-4 mt-2 text-sm">
                         <div className="flex items-center gap-1">
                           <MapPin className="w-4 h-4" />
-                          {device.location}
+                          {getDeviceLocation(device.id) ? `${getDeviceLocation(device.id)?.latitude.toFixed(4)}, ${getDeviceLocation(device.id)?.longitude.toFixed(4)}` : "Unknown"}
                         </div>
                         <div className="flex items-center gap-1">
-                          <Zap className={`w-4 h-4 ${getBatteryColor(device.battery)}`} />
-                          {device.battery}%
+                          <Zap className={`w-4 h-4 ${getBatteryColor(0)}`} />
+                          N/A
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{device.driver}</p>
+                      <p className="text-sm font-medium">{device.deviceId || "Unassigned"}</p>
                       <p className="text-xs text-muted-foreground">
-                        Updated {Math.round((Date.now() - device.lastUpdate.getTime()) / 60000)} min ago
+                        Updated {device.updatedAt ? Math.round((Date.now() - new Date(device.updatedAt).getTime()) / 60000) : "?"} min ago
                       </p>
                       <Button variant="outline" size="sm" className="mt-2">
                         Details
