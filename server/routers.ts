@@ -19,6 +19,7 @@ import { auditRouter } from "./audit.router";
 import { notificationsRouter } from "./notifications.router";
 import { weatherRouter } from "./weather.router";
 import { twilioRouter } from "./twilio.router";
+import { slackRouter } from "./slack.router";
 
 // RBAC Procedure Guards
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -91,6 +92,7 @@ export const appRouter = router({
   notifications: notificationsRouter,
   weather: weatherRouter,
   twilio: twilioRouter,
+  slack: slackRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

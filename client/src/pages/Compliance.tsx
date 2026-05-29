@@ -1,65 +1,30 @@
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, CheckCircle, Clock, AlertTriangle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function Compliance() {
+  const { user } = useAuth();
   const [selectedTask, setSelectedTask] = useState<number | null>(null);
 
-  // Mock data for compliance tasks
-  const complianceTasks = [
-    {
-      id: 1,
-      title: "Quarterly Compliance Audit",
-      property: "Property #123",
-      dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-      status: "pending",
-      priority: "high",
-      assignee: "John Doe",
-    },
-    {
-      id: 2,
-      title: "Buffer Zone Verification",
-      property: "Property #456",
-      dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
-      status: "in_progress",
-      priority: "medium",
-      assignee: "Jane Smith",
-    },
-    {
-      id: 3,
-      title: "Fertilizer Application Review",
-      property: "Property #789",
-      dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      status: "overdue",
-      priority: "critical",
-      assignee: "Unassigned",
-    },
-  ];
+  // Fetch real data
+  const complianceQuery = trpc.compliance.listTasks.useQuery(
+    { companyId: user?.companyId || 0 },
+    { enabled: !!user?.companyId }
+  );
+  const violationsQuery = trpc.compliance.getViolations.useQuery(
+    { companyId: user?.companyId || 0 },
+    { enabled: !!user?.companyId }
+  );
 
-  const violations = [
-    {
-      id: 1,
-      type: "Buffer Zone Violation",
-      property: "Property #123",
-      severity: "high",
-      detectedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      status: "pending_remediation",
-      evidence: 3,
-    },
-    {
-      id: 2,
-      type: "Fertilizer Overapplication",
-      property: "Property #456",
-      severity: "medium",
-      detectedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      status: "remediated",
-      evidence: 5,
-    },
-  ];
+  const complianceTasks = complianceQuery.data || [];
+  const violations = violationsQuery.data || [];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -94,28 +59,42 @@ export default function Compliance() {
           <h1 className="text-3xl font-bold">Compliance Management</h1>
           <p className="text-muted-foreground">Track and manage compliance tasks and violations</p>
         </div>
-        <Button>New Task</Button>
+        <Button onClick={() => toast.info("Create task feature coming soon")}>New Task</Button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Compliance Score</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">87%</div>
-            <p className="text-xs text-muted-foreground">+2% from last month</p>
+            {complianceQuery.isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{complianceTasks.length}</div>
+                <p className="text-xs text-muted-foreground">compliance tasks</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">3 overdue</p>
+            {complianceQuery.isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-green-600">
+                  {complianceTasks.filter((t: any) => t.status === "completed").length}
+                </div>
+                <p className="text-xs text-muted-foreground">tasks completed</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -124,18 +103,32 @@ export default function Compliance() {
             <CardTitle className="text-sm font-medium">Violations</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
-            <p className="text-xs text-muted-foreground">2 pending remediation</p>
+            {violationsQuery.isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-red-600">{violations.length}</div>
+                <p className="text-xs text-muted-foreground">active violations</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Evidence Packages</CardTitle>
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">All verified</p>
+            {complianceQuery.isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {complianceTasks.filter((t: any) => t.status === "pending").length}
+                </div>
+                <p className="text-xs text-muted-foreground">pending tasks</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -152,7 +145,13 @@ export default function Compliance() {
         {/* Tasks Tab */}
         <TabsContent value="tasks" className="space-y-4">
           <div className="space-y-2">
-            {complianceTasks.map((task) => (
+            {complianceQuery.isLoading ? (
+              <>
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </>
+            ) : complianceTasks.length > 0 ? (
+              complianceTasks.map((task: any) => (
               <Card
                 key={task.id}
                 className="cursor-pointer hover:bg-accent"
@@ -182,14 +181,23 @@ export default function Compliance() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            ))
+            ) : (
+              <p className="text-muted-foreground">No compliance tasks</p>
+            )}
           </div>
         </TabsContent>
 
         {/* Violations Tab */}
         <TabsContent value="violations" className="space-y-4">
           <div className="space-y-2">
-            {violations.map((violation) => (
+            {violationsQuery.isLoading ? (
+              <>
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </>
+            ) : violations.length > 0 ? (
+              violations.map((violation: any) => (
               <Card key={violation.id}>
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
@@ -219,7 +227,10 @@ export default function Compliance() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            ))
+            ) : (
+              <p className="text-muted-foreground">No violations</p>
+            )}
           </div>
         </TabsContent>
 

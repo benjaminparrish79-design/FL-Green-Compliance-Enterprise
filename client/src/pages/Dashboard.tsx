@@ -13,11 +13,11 @@ export default function Dashboard() {
   // Queries
   const companiesQuery = trpc.companies.list.useQuery(undefined, { enabled: !!user?.tenantId });
   const propertiesQuery = trpc.properties.list.useQuery(undefined, { enabled: !!user?.companyId });
-  const workOrdersQuery = trpc.workOrders.list.useQuery(undefined, { enabled: !!user?.companyId });
-  const devicesQuery = trpc.devices.list.useQuery(undefined, { enabled: !!user?.companyId });
+  const workOrdersQuery = trpc.workorder.list.useQuery({ companyId: user?.companyId || 0 }, { enabled: !!user?.companyId });
+  const devicesQuery = trpc.telemetry.getFleetLocations.useQuery({ companyId: user?.companyId || 0 }, { enabled: !!user?.companyId });
   const complianceScoreQuery = trpc.compliance.getComplianceScore.useQuery(
     { companyId: user?.companyId || 0 },
-    { enabled: !!user?.companyId }
+    { enabled: !!user?.companyId, retry: false }
   );
   const violationsQuery = trpc.compliance.getViolations.useQuery(
     { companyId: user?.companyId || 0 },
@@ -134,7 +134,7 @@ export default function Dashboard() {
                     </div>
                   ) : violationsQuery.data?.length ? (
                     <div className="space-y-3">
-                      {violationsQuery.data.slice(0, 5).map((violation) => (
+                      {violationsQuery.data.slice(0, 5).map((violation: any) => (
                         <div key={violation.id} className="flex items-start gap-3 pb-3 border-b last:border-0">
                           <AlertTriangle className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
                             violation.severity === "CRITICAL" ? "text-red-500" :
@@ -218,11 +218,11 @@ export default function Dashboard() {
                   <Skeleton className="h-32 w-full" />
                 ) : workOrdersQuery.data?.length ? (
                   <div className="space-y-2">
-                    {workOrdersQuery.data.map((wo) => (
+                    {workOrdersQuery.data.map((wo: any) => (
                       <div key={wo.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
-                          <p className="font-medium text-sm">{wo.title}</p>
-                          <p className="text-xs text-muted-foreground">{wo.workOrderId}</p>
+                          <p className="font-medium text-sm">{wo.title || 'Work Order'}</p>
+                          <p className="text-xs text-muted-foreground">{wo.status}</p>
                         </div>
                         <Badge>{wo.status}</Badge>
                       </div>
@@ -247,14 +247,14 @@ export default function Dashboard() {
                   <Skeleton className="h-32 w-full" />
                 ) : devicesQuery.data?.length ? (
                   <div className="space-y-2">
-                    {devicesQuery.data.map((device) => (
-                      <div key={device.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    {devicesQuery.data.map((device: any) => (
+                      <div key={device.deviceId} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
-                          <p className="font-medium text-sm">{device.name}</p>
+                          <p className="font-medium text-sm">{device.deviceName}</p>
                           <p className="text-xs text-muted-foreground">{device.deviceType}</p>
                         </div>
-                        <Badge variant={device.status === "active" ? "default" : "secondary"}>
-                          {device.status}
+                        <Badge variant="default">
+                          Online
                         </Badge>
                       </div>
                     ))}
