@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, tenants, companies, properties } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,34 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Multi-tenant helpers
+export async function getUserTenant(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user.length || !user[0].tenantId) return undefined;
+  
+  const tenant = await db.select().from(tenants).where(eq(tenants.id, user[0].tenantId)).limit(1);
+  return tenant.length > 0 ? tenant[0] : undefined;
+}
+
+export async function getUserCompanies(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user.length || !user[0].tenantId) return [];
+  
+  return db.select().from(companies).where(eq(companies.tenantId, user[0].tenantId));
+}
+
+export async function getTenantProperties(tenantId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return db.select().from(properties).where(and(
+    eq(properties.tenantId, tenantId),
+    eq(properties.companyId, companyId)
+  ));
+}
