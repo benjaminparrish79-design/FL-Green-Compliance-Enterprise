@@ -12,6 +12,7 @@ import { complianceRouter } from "./compliance.router";
 import { telemetryRouter } from "./telemetry.router";
 import { workOrderRouter } from "./workorder.router";
 import { inspectionRouter } from "./inspection.router";
+import { billingRouter } from "./billing.router";
 
 // RBAC Procedure Guards
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -77,6 +78,7 @@ export async function logAudit({
 
 export const appRouter = router({
   system: systemRouter,
+  billing: billingRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

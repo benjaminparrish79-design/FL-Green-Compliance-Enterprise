@@ -263,3 +263,100 @@ export const complianceTasks = mysqlTable("complianceTasks", {
 
 export type ComplianceTask = typeof complianceTasks.$inferSelect;
 export type InsertComplianceTask = typeof complianceTasks.$inferInsert;
+
+
+// Billing & Subscription Tables
+export const subscriptionPlans = mysqlTable("subscriptionPlans", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: varchar("planId", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  stripePriceId: varchar("stripePriceId", { length: 255 }).notNull(),
+  stripeProductId: varchar("stripeProductId", { length: 255 }).notNull(),
+  price: int("price").notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "annual"]).notNull(),
+  maxProperties: int("maxProperties"),
+  maxWorkOrders: int("maxWorkOrders"),
+  maxUsers: int("maxUsers"),
+  features: json("features").$type<string[]>().default([]).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;
+
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  subscriptionId: varchar("subscriptionId", { length: 64 }).notNull().unique(),
+  tenantId: int("tenantId").notNull(),
+  companyId: int("companyId").notNull(),
+  planId: varchar("planId", { length: 64 }).notNull(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }).notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["active", "past_due", "canceled", "trialing"]).notNull(),
+  currentPeriodStart: timestamp("currentPeriodStart"),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  canceledAt: timestamp("canceledAt"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+export const invoices = mysqlTable("invoices", {
+  id: int("id").autoincrement().primaryKey(),
+  invoiceId: varchar("invoiceId", { length: 64 }).notNull().unique(),
+  subscriptionId: varchar("subscriptionId", { length: 64 }).notNull(),
+  stripeInvoiceId: varchar("stripeInvoiceId", { length: 255 }).notNull(),
+  amount: int("amount").notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  status: mysqlEnum("status", ["draft", "open", "paid", "void", "uncollectible"]).notNull(),
+  paidAt: timestamp("paidAt"),
+  dueDate: timestamp("dueDate"),
+  pdfUrl: varchar("pdfUrl", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = typeof invoices.$inferInsert;
+
+export const paymentMethods = mysqlTable("paymentMethods", {
+  id: int("id").autoincrement().primaryKey(),
+  paymentMethodId: varchar("paymentMethodId", { length: 64 }).notNull().unique(),
+  stripePaymentMethodId: varchar("stripePaymentMethodId", { length: 255 }).notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }).notNull(),
+  type: varchar("type", { length: 64 }).notNull(),
+  cardBrand: varchar("cardBrand", { length: 64 }),
+  cardLast4: varchar("cardLast4", { length: 4 }),
+  isDefault: boolean("isDefault").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
+export type InsertPaymentMethod = typeof paymentMethods.$inferInsert;
+
+export const usageMetrics = mysqlTable("usageMetrics", {
+  id: int("id").autoincrement().primaryKey(),
+  metricId: varchar("metricId", { length: 64 }).notNull().unique(),
+  companyId: int("companyId").notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 64 }).notNull(),
+  propertiesCount: int("propertiesCount").default(0).notNull(),
+  workOrdersCount: int("workOrdersCount").default(0).notNull(),
+  usersCount: int("usersCount").default(0).notNull(),
+  apiCallsCount: int("apiCallsCount").default(0).notNull(),
+  storageUsedMb: int("storageUsedMb").default(0).notNull(),
+  billingPeriodStart: timestamp("billingPeriodStart").notNull(),
+  billingPeriodEnd: timestamp("billingPeriodEnd").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UsageMetrics = typeof usageMetrics.$inferSelect;
+export type InsertUsageMetrics = typeof usageMetrics.$inferInsert;
