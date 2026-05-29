@@ -9,6 +9,9 @@ import { tenants, companies, properties, applications, complianceResults, workOr
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { complianceRouter } from "./compliance.router";
+import { telemetryRouter } from "./telemetry.router";
+import { workOrderRouter } from "./workorder.router";
+import { inspectionRouter } from "./inspection.router";
 
 // RBAC Procedure Guards
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -301,9 +304,18 @@ export const appRouter = router({
 
   // Compliance Router
   compliance: complianceRouter,
+
+  // Telemetry Router
+  telemetry: telemetryRouter,
+
+  // Work Order Router
+  workorder: workOrderRouter,
+
+  // Inspection Router
+  inspection: inspectionRouter,
 });
 
 export type AppRouter = typeof appRouter;
 
 // Export routers for use in other modules
-export { complianceRouter };
+export { complianceRouter, telemetryRouter, workOrderRouter, inspectionRouter };
