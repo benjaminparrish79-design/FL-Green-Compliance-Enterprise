@@ -10,6 +10,7 @@ import Compliance from "./pages/Compliance";
 import Fleet from "./pages/Fleet";
 import WorkOrders from "./pages/WorkOrders";
 import Inspections from "./pages/Inspections";
+import Settings from "./pages/Settings";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/fleet" component={Fleet} />
       <Route path="/work-orders" component={WorkOrders} />
       <Route path="/inspections" component={Inspections} />
+      <Route path="/settings" component={Settings} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -1,48 +1,40 @@
 import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, CheckCircle, AlertCircle, Zap } from "lucide-react";
+import { Upload, CheckCircle, AlertCircle, Zap, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { trpc } from "@/lib/trpc";
 
 export default function Inspections() {
+  const { user } = useAuth();
   const [selectedInspection, setSelectedInspection] = useState<number | null>(null);
 
-  const inspections = [
+  // Use mock data for now (inspection router only has analyzeImage/analyzeApplication)
+  const mockInspections = [
     {
       id: 1,
-      property: "Property #123",
-      type: "Turf Health Assessment",
+      fileName: "turf-sample-1.jpg",
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
       status: "completed",
-      uploadedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
       score: 87,
-      findings: [
-        { issue: "Healthy turf", severity: "info", confidence: 95 },
-        { issue: "Minor nutrient deficiency", severity: "warning", confidence: 78 },
-      ],
+      analysis: { condition: "Healthy", compliance: "Compliant" },
     },
     {
       id: 2,
-      property: "Property #456",
-      type: "Fertilizer Application Check",
+      fileName: "fertilizer-check.jpg",
+      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
       status: "completed",
-      uploadedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
       score: 72,
-      findings: [
-        { issue: "Proper application detected", severity: "info", confidence: 92 },
-        { issue: "Buffer zone compliant", severity: "info", confidence: 88 },
-      ],
-    },
-    {
-      id: 3,
-      property: "Property #789",
-      type: "Disease Detection",
-      status: "analyzing",
-      uploadedAt: new Date(Date.now() - 10 * 60 * 1000),
-      score: null,
-      findings: [],
+      analysis: { condition: "Good", compliance: "Compliant" },
     },
   ];
+
+  const inspections = mockInspections;
+
+
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -62,6 +54,17 @@ export default function Inspections() {
     if (score >= 60) return "text-yellow-600";
     return "text-red-600";
   };
+
+  // Calculate stats from real data
+  const totalInspections = inspections.length;
+  const completedInspections = inspections.filter((i: any) => i.status === "completed").length;
+  const avgScore = completedInspections > 0
+    ? Math.round(
+        inspections
+          .filter((i: any) => i.status === "completed" && i.score)
+          .reduce((sum: number, i: any) => sum + (i.score || 0), 0) / completedInspections
+      )
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -84,8 +87,8 @@ export default function Inspections() {
             <CardTitle className="text-sm font-medium">Total Inspections</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">234</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <div className="text-2xl font-bold">{totalInspections}</div>
+            <p className="text-xs text-muted-foreground">All time</p>
           </CardContent>
         </Card>
 
@@ -94,28 +97,28 @@ export default function Inspections() {
             <CardTitle className="text-sm font-medium">Avg Compliance Score</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">81%</div>
-            <p className="text-xs text-muted-foreground">+3% from last month</p>
+            <div className="text-2xl font-bold">{avgScore}%</div>
+            <p className="text-xs text-muted-foreground">From completed</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Issues Found</CardTitle>
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">8 resolved</p>
+            <div className="text-2xl font-bold">{completedInspections}</div>
+            <p className="text-xs text-muted-foreground">{totalInspections - completedInspections} pending</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Avg Analysis Time</CardTitle>
+            <CardTitle className="text-sm font-medium">Analysis Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2.3s</div>
-            <p className="text-xs text-muted-foreground">Per image</p>
+            <div className="text-2xl font-bold">{inspections.filter((i: any) => i.status === "analyzing").length}</div>
+            <p className="text-xs text-muted-foreground">Currently analyzing</p>
           </CardContent>
         </Card>
       </div>
@@ -131,8 +134,15 @@ export default function Inspections() {
 
         {/* Recent Inspections Tab */}
         <TabsContent value="recent" className="space-y-4">
+          {inspections.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                No inspections yet. Upload an image to get started.
+              </CardContent>
+            </Card>
+          ) : (
           <div className="space-y-2">
-            {inspections.map((inspection) => (
+            {inspections.map((inspection: any) => (
               <Card
                 key={inspection.id}
                 className="cursor-pointer hover:bg-accent"
@@ -152,16 +162,14 @@ export default function Inspections() {
                       </div>
                       <p className="text-sm text-muted-foreground">{inspection.type}</p>
 
-                      {inspection.findings.length > 0 && (
+                      {inspection.analysis && (
                         <div className="mt-3 space-y-2">
-                          {inspection.findings.map((finding, i) => (
+                          {typeof inspection.analysis === 'object' && Object.entries(inspection.analysis).map(([key, value], i) => (
                             <div
                               key={i}
-                              className={`inline-block px-2 py-1 rounded text-xs ${getSeverityColor(
-                                finding.severity
-                              )}`}
+                              className={`inline-block px-2 py-1 rounded text-xs bg-blue-100 text-blue-800`}
                             >
-                              {finding.issue} ({finding.confidence}% confidence)
+                              {key}: {String(value)}
                             </div>
                           ))}
                         </div>
@@ -194,6 +202,7 @@ export default function Inspections() {
               </Card>
             ))}
           </div>
+          )}
         </TabsContent>
 
         {/* Upload New Tab */}
@@ -246,22 +255,21 @@ export default function Inspections() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {[
-                  { date: "2026-05-28", count: 12, avgScore: 84 },
-                  { date: "2026-05-27", count: 8, avgScore: 79 },
-                  { date: "2026-05-26", count: 15, avgScore: 82 },
-                  { date: "2026-05-25", count: 10, avgScore: 81 },
-                ].map((entry, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 border rounded">
-                    <div>
-                      <p className="font-medium">{entry.date}</p>
-                      <p className="text-sm text-muted-foreground">{entry.count} inspections</p>
+                {inspections.length === 0 ? (
+                  <p className="text-muted-foreground">No inspection history</p>
+                ) : (
+                  inspections.map((inspection: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between p-3 border rounded">
+                      <div>
+                        <p className="font-medium">{new Date(inspection.createdAt).toLocaleDateString()}</p>
+                        <p className="text-sm text-muted-foreground">Inspection #{inspection.id}</p>
+                      </div>
+                      <div className={`text-lg font-bold ${getScoreColor(inspection.score || 0)}`}>
+                        {inspection.score || 'N/A'}%
+                      </div>
                     </div>
-                    <div className={`text-lg font-bold ${getScoreColor(entry.avgScore)}`}>
-                      {entry.avgScore}%
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
