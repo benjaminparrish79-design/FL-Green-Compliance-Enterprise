@@ -14,6 +14,9 @@ import { workOrderRouter } from "./workorder.router";
 import { inspectionRouter } from "./inspection.router";
 import { billingRouter } from "./billing.router";
 import { analyticsRouter } from "./analytics.router";
+import { usageRouter } from "./usage.router";
+import { auditRouter } from "./audit.router";
+import { notificationsRouter } from "./notifications.router";
 
 // RBAC Procedure Guards
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -81,6 +84,9 @@ export const appRouter = router({
   system: systemRouter,
   billing: billingRouter,
   analytics: analyticsRouter,
+  usage: usageRouter,
+  audit: auditRouter,
+  notifications: notificationsRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

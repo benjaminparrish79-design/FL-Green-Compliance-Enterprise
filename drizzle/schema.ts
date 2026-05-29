@@ -360,3 +360,100 @@ export const usageMetrics = mysqlTable("usageMetrics", {
 
 export type UsageMetrics = typeof usageMetrics.$inferSelect;
 export type InsertUsageMetrics = typeof usageMetrics.$inferInsert;
+
+
+// Usage Tracking
+export const usageEvents = mysqlTable("usage_events", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull(),
+  userId: int("userId").notNull(),
+  eventType: varchar("eventType", { length: 100 }).notNull(), // api_call, storage, users, inspections
+  resourceType: varchar("resourceType", { length: 100 }),
+  quantity: int("quantity").default(1),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UsageEvent = typeof usageEvents.$inferSelect;
+export type InsertUsageEvent = typeof usageEvents.$inferInsert;
+
+// Notifications
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull(),
+  userId: int("userId").notNull(),
+  type: varchar("type", { length: 100 }).notNull(), // compliance_deadline, work_order_assigned, etc
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message"),
+  channels: json("channels"), // { inApp: true, email: false, sms: false }
+  read: boolean("read").default(false),
+  readAt: timestamp("readAt"),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+// Security Events
+export const securityEvents = mysqlTable("security_events", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull(),
+  userId: int("userId"),
+  eventType: varchar("eventType", { length: 100 }).notNull(), // login, logout, failed_auth, permission_denied, data_access
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).default("medium"),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  userAgent: text("userAgent"),
+  description: text("description"),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SecurityEvent = typeof securityEvents.$inferSelect;
+export type InsertSecurityEvent = typeof securityEvents.$inferInsert;
+
+// Evidence Packages
+export const evidencePackages = mysqlTable("evidence_packages", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull(),
+  violationId: int("violationId"),
+  complianceTaskId: int("complianceTaskId"),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  files: json("files"), // array of { url, filename, mimeType, hash }
+  hash: varchar("hash", { length: 256 }), // SHA-256 of package for integrity
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+});
+
+export type EvidencePackage = typeof evidencePackages.$inferSelect;
+export type InsertEvidencePackage = typeof evidencePackages.$inferInsert;
+
+// Notification Preferences
+export const notificationPreferences = mysqlTable("notification_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull(),
+  userId: int("userId").notNull(),
+  complianceDeadline: boolean("complianceDeadline").default(true),
+  workOrderAssigned: boolean("workOrderAssigned").default(true),
+  workOrderCompleted: boolean("workOrderCompleted").default(true),
+  geofenceBreach: boolean("geofenceBreach").default(true),
+  deviceOffline: boolean("deviceOffline").default(true),
+  deviceMaintenance: boolean("deviceMaintenance").default(true),
+  violationDetected: boolean("violationDetected").default(true),
+  subscriptionAlert: boolean("subscriptionAlert").default(true),
+  billingAlert: boolean("billingAlert").default(true),
+  inspectionComplete: boolean("inspectionComplete").default(true),
+  systemAlert: boolean("systemAlert").default(true),
+  emailNotifications: boolean("emailNotifications").default(true),
+  smsNotifications: boolean("smsNotifications").default(false),
+  pushNotifications: boolean("pushNotifications").default(true),
+  quietHoursEnabled: boolean("quietHoursEnabled").default(false),
+  quietHoursStart: varchar("quietHoursStart", { length: 5 }), // HH:MM format
+  quietHoursEnd: varchar("quietHoursEnd", { length: 5 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
