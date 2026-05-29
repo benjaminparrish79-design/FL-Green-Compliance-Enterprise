@@ -1,0 +1,69 @@
+name: Security & Dependency Checks
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      
+      - name: Install pnpm
+        run: npm install -g pnpm
+      
+      - name: Check for vulnerabilities
+        run: pnpm audit --audit-level=moderate
+      
+      - name: Check outdated packages
+        run: pnpm outdated || true
+
+  codeql:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      security-events: write
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: 'javascript'
+      
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      
+      - name: Install pnpm
+        run: npm install -g pnpm
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run linter
+        run: pnpm format --check || true
