@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY || "1192048fa965d0dab87a32e8c2cd49ca";
+const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
+
+if (!OPENWEATHER_API_KEY) {
+  console.warn('[OpenWeather] Missing API key - Weather alerts will not work. Configure OPENWEATHER_API_KEY environment variable.');
+}
 const OPENWEATHER_BASE_URL = "https://api.openweathermap.org/data/2.5";
 
 export interface WeatherData {
@@ -31,6 +35,11 @@ export interface WeatherAlert {
  */
 export async function getCurrentWeather(lat: number, lon: number): Promise<WeatherData | null> {
   try {
+    if (!OPENWEATHER_API_KEY) {
+      console.error('[Weather Service] OpenWeather API key not configured');
+      return null;
+    }
+    
     const response = await axios.get(`${OPENWEATHER_BASE_URL}/weather`, {
       params: {
         lat,
@@ -67,6 +76,11 @@ export async function getCurrentWeather(lat: number, lon: number): Promise<Weath
  */
 export async function getWeatherForecast(lat: number, lon: number) {
   try {
+    if (!OPENWEATHER_API_KEY) {
+      console.error('[Weather Service] OpenWeather API key not configured');
+      return [];
+    }
+    
     const response = await axios.get(`${OPENWEATHER_BASE_URL}/forecast`, {
       params: {
         lat,

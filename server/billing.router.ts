@@ -6,13 +6,19 @@ import { subscriptionPlans, subscriptions, invoices, paymentMethods } from "../d
 import { eq, and } from "drizzle-orm";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+
+if (!STRIPE_SECRET_KEY) {
+  console.warn('[Stripe] Missing secret key - Billing operations will not work. Configure STRIPE_SECRET_KEY environment variable.');
+}
+
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 // Subscription Plans
 const PLANS = {
   starter: {
     name: "Starter",
-    stripePriceId: process.env.STRIPE_STARTER_PRICE_ID || "price_starter",
+    stripePriceId: process.env.STRIPE_STARTER_PRICE_ID,
     price: 4999, // $49.99/month
     maxProperties: 10,
     maxWorkOrders: 50,
@@ -21,7 +27,7 @@ const PLANS = {
   },
   professional: {
     name: "Professional",
-    stripePriceId: process.env.STRIPE_PROFESSIONAL_PRICE_ID || "price_professional",
+    stripePriceId: process.env.STRIPE_PROFESSIONAL_PRICE_ID,
     price: 14999, // $149.99/month
     maxProperties: 100,
     maxWorkOrders: 500,
@@ -30,7 +36,7 @@ const PLANS = {
   },
   enterprise: {
     name: "Enterprise",
-    stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "price_enterprise",
+    stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID,
     price: 49999, // $499.99/month
     maxProperties: null,
     maxWorkOrders: null,
@@ -38,6 +44,22 @@ const PLANS = {
     features: ["All Features", "Custom Integration", "Dedicated Support", "SLA"],
   },
 };
+
+if (!PLANS.starter.stripePriceId || !PLANS.professional.stripePriceId || !PLANS.enterprise.stripePriceId) {
+  console.warn('[Stripe] Missing price IDs - Configure STRIPE_STARTER_PRICE_ID, STRIPE_PROFESSIONAL_PRICE_ID, and STRIPE_ENTERPRISE_PRICE_ID environment variables.');
+}
+
+
+// Helper function to ensure Stripe is configured
+function ensureStripe() {
+  if (!stripe) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Stripe is not configured. Set STRIPE_SECRET_KEY environment variable.",
+    });
+  }
+  return stripe;
+}
 
 export const billingRouter = router({
   // Get available plans
@@ -75,7 +97,7 @@ export const billingRouter = router({
 
       try {
         // Create Stripe checkout session
-        const session = await stripe.checkout.sessions.create({
+        const session = await ensureStripe().checkout.sessions.create({
           payment_method_types: ["card"],
           customer_email: ctx.user.email,
           line_items: [
@@ -123,7 +145,7 @@ export const billingRouter = router({
 
     try {
       // Fetch latest subscription data from Stripe
-      const stripeSubscription = await stripe.subscriptions.retrieve(
+      const stripeSubscription = await ensureStripe().subscriptions.retrieve(
         sub[0].stripeSubscriptionId
       );
 
@@ -179,7 +201,7 @@ export const billingRouter = router({
 
     try {
       // Cancel at period end
-      await stripe.subscriptions.update(sub[0].stripeSubscriptionId, {
+      await ensureStripe().subscriptions.update(sub[0].stripeSubscriptionId, {
         cancel_at_period_end: true,
       });
 
@@ -229,7 +251,7 @@ export const billingRouter = router({
 
       try {
         // Update subscription's default payment method
-        await stripe.subscriptions.update(sub[0].stripeSubscriptionId, {
+        await ensureStripe().subscriptions.update(sub[0].stripeSubscriptionId, {
           default_payment_method: input.stripePaymentMethodId,
         });
 
