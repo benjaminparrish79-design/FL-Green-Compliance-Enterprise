@@ -1,10 +1,14 @@
 import twilio from "twilio";
 
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || "+1234567890";
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 
-const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+  console.warn('[Twilio] Missing credentials - SMS/Voice notifications will not work. Configure TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER environment variables.');
+}
+
+const client = TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) : null;
 
 export interface SMSNotification {
   to: string;
@@ -23,9 +27,13 @@ export interface VoiceNotification {
  */
 export async function sendSMS(notification: SMSNotification): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
+    if (!client) {
+      return { success: false, error: "Twilio client not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER environment variables." };
+    }
+    
     const message = await client.messages.create({
       body: notification.message,
-      from: TWILIO_PHONE_NUMBER,
+      from: TWILIO_PHONE_NUMBER!,
       to: notification.to,
     });
 
@@ -42,10 +50,14 @@ export async function sendSMS(notification: SMSNotification): Promise<{ success:
  */
 export async function sendVoiceCall(notification: VoiceNotification): Promise<{ success: boolean; callId?: string; error?: string }> {
   try {
+    if (!client) {
+      return { success: false, error: "Twilio client not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER environment variables." };
+    }
+    
     const call = await client.calls.create({
       url: `https://demo.twilio.com/docs/voice.xml?Message=${encodeURIComponent(notification.message)}`,
       to: notification.to,
-      from: TWILIO_PHONE_NUMBER,
+      from: TWILIO_PHONE_NUMBER!,
     });
 
     console.log(`[Twilio Voice] Call initiated to ${notification.to}: ${call.sid}`);
